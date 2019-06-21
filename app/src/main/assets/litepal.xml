@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<litepal>
+    //指定数据库名
+    <dbname value = "cool_weather"/>
+    //指定当前版本号
+    <version value = "1"/>
+
+    <list>//这个是映射列表
+        <mapping class = "com.lexieluv.coolweather.db.Province"/>
+        <mapping class = "com.lexieluv.coolweather.db.City"/>
+        <mapping class = "com.lexieluv.coolweather.db.County"/>
+    </list>
+
+    //最后到注册文件中添加app名字，就把所有配置完成了，数据库和表会在首次执行任意数据库操作时自动创建
+</litepal>
