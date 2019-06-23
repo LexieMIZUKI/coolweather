@@ -1,5 +1,6 @@
 package com.lexieluv.coolweather;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
@@ -9,6 +10,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -21,6 +23,7 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.lexieluv.coolweather.gson.Forecast;
 import com.lexieluv.coolweather.gson.Weather;
+import com.lexieluv.coolweather.service.AutoUpdateService;
 import com.lexieluv.coolweather.util.HttpUtil;
 import com.lexieluv.coolweather.util.Utility;
 
@@ -30,11 +33,14 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
+import com.lexieluv.coolweather.service.AutoUpdateService;
+
 /**
  * 8.请求天气数据，并且将数据展示到界面上
  * 11.使背景图片和标题更加融合
  * 12.加入刷新功能，更新天气的处理逻辑
  * 13.加入滑动菜单的逻辑处理
+ * 15.激活服务
  */
 public class WeatherActivity extends AppCompatActivity {
 
@@ -83,7 +89,7 @@ public class WeatherActivity extends AppCompatActivity {
                 drawerLayout.openDrawer(GravityCompat.START);
             }
         });
-        
+
         //刷新功能加入
         swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
 
@@ -198,39 +204,46 @@ public class WeatherActivity extends AppCompatActivity {
     处理并展示Weather实体类中的数据
      */
     private void showWeatherInfo(Weather weather) {
-        String cityName = weather.basic.cityName;
-        String updateTime = weather.basic.update.updateTime.split(" ")[1];//这是什么鬼？？？？
-        String degree = weather.now.temperature + "℃";
-        String weatherInfo = weather.now.more.info;
-        titleCity.setText(cityName);
-        titleUpdateTime.setText(updateTime);
-        degreeText.setText(degree);
-        weatherInfoText.setText(weatherInfo);
-        forecastLayout.removeAllViews();//这个是什么鬼？？？？
-        for (Forecast forecast : weather.forecastList){
-            View view = LayoutInflater.from(this).inflate(R.layout.forecast_item
-            ,forecastLayout,false);
-            TextView dateText = view.findViewById(R.id.date_text);
-            TextView infoText = view.findViewById(R.id.info_text);
-            TextView maxText = view.findViewById(R.id.max_text);
-            TextView minText = view.findViewById(R.id.min_text);
-            dateText.setText(forecast.date);
-            infoText.setText(forecast.more.info);
-            maxText.setText(forecast.temperature.max);
-            minText.setText(forecast.temperature.min);
-            forecastLayout.addView(view);
-        }
-        if (weather.aqi != null){
-            aqiText.setText(weather.aqi.city.aqi);
-            pm25Text.setText(weather.aqi.city.pm25);
-        }
-        String comfort = "舒适度：" + weather.suggestion.comfort.info;
-        String carwash = "洗车指数：" + weather.suggestion.carWash.info;
-        String sport = "运动建议：" + weather.suggestion.sport.info;
-        comfortText.setText(comfort);
-        carWashText.setText(carwash);
-        sportText.setText(sport);
-        weatherLayout.setVisibility(View.VISIBLE);
+            String cityName = weather.basic.cityName;
+            String updateTime = weather.basic.update.updateTime.split(" ")[1];//这是什么鬼？？？？
+            String degree = weather.now.temperature + "℃";
+            String weatherInfo = weather.now.more.info;
+            titleCity.setText(cityName);
+            titleUpdateTime.setText(updateTime);
+            degreeText.setText(degree);
+            weatherInfoText.setText(weatherInfo);
+            forecastLayout.removeAllViews();//这个是什么鬼？？？？
+            for (Forecast forecast : weather.forecastList) {
+                View view = LayoutInflater.from(this).inflate(R.layout.forecast_item
+                        , forecastLayout, false);
+                TextView dateText = view.findViewById(R.id.date_text);
+                TextView infoText = view.findViewById(R.id.info_text);
+                TextView maxText = view.findViewById(R.id.max_text);
+                TextView minText = view.findViewById(R.id.min_text);
+                dateText.setText(forecast.date);
+                infoText.setText(forecast.more.info);
+                maxText.setText(forecast.temperature.max);
+                minText.setText(forecast.temperature.min);
+                forecastLayout.addView(view);
+            }
+            if (weather.aqi != null) {
+                aqiText.setText(weather.aqi.city.aqi);
+                pm25Text.setText(weather.aqi.city.pm25);
+
+
+            }
+            String comfort = "舒适度：" + weather.suggestion.comfort.info;
+            String carwash = "洗车指数：" + weather.suggestion.carWash.info;
+            String sport = "运动建议：" + weather.suggestion.sport.info;
+            comfortText.setText(comfort);
+            carWashText.setText(carwash);
+            sportText.setText(sport);
+            weatherLayout.setVisibility(View.VISIBLE);
+
+            Intent intent = new Intent(WeatherActivity.this, AutoUpdateService.class);//新增激活服务
+//            intent.setAction("android.intent.action.RESPOND_VIA_MESSAGE");
+            startService(intent);//这里注意是startSERVICE！！！！！
+//            Log.d("===========","启动服务"+WeatherActivity.this.startService(intent2));
     }
 
     private void initView() {
