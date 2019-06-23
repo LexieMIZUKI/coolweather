@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.preference.PreferenceManager;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -29,6 +30,7 @@ import okhttp3.Response;
 /**
  * 8.请求天气数据，并且将数据展示到界面上
  * 11.使背景图片和标题更加融合
+ * 12.加入刷新功能，更新天气的处理逻辑
  */
 public class WeatherActivity extends AppCompatActivity {
 
@@ -47,9 +49,11 @@ public class WeatherActivity extends AppCompatActivity {
 
     private ImageView bingPicImg;//从必应上获取图片
 
+    private SwipeRefreshLayout swipeRefresh;//新增刷新布局
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        super.onCreate(savedInstanceState);//有时直接除了初始化单存在一个方法，其他的直接罗列出来的好处就是防止由于某些顺序问题导致程序崩溃
 
         //使背景图片更加融合
         if(Build.VERSION.SDK_INT >= 21){
@@ -64,18 +68,31 @@ public class WeatherActivity extends AppCompatActivity {
         //初始化
         initView();
 
+        //刷新功能加入
+        swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather",null);
+        final String weatherId;//新增
         if(weatherString != null){
             //有缓存时直接解析天气数据
             Weather weather = Utility.handleWeatherResponse(weatherString);
+            weatherId = weather.basic.weatherId;//新增
             showWeatherInfo(weather);
         } else {
             //无缓存时到服务器进行查询
-            String weatherId = getIntent().getStringExtra("weather_id");//这里是创建一个叫做weather_id的intent，后面其他活动来获取它，具体？？
+            //这里直接就改成用上面的新定义的weatherId
+            weatherId = getIntent().getStringExtra("weather_id");//这里是创建一个叫做weather_id的intent，后面其他活动来获取它，具体？？
             weatherLayout.setVisibility(View.VISIBLE);
             requestWeather(weatherId);
         }
+        //新增刷新
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(weatherId);
+            }
+        });
 
         //获取图片的操作
         String bingPic = prefs.getString("bing_pic",null);
@@ -130,6 +147,7 @@ public class WeatherActivity extends AppCompatActivity {
                     public void run() {
                         Toast.makeText(WeatherActivity.this,
                                 "获取天气信息失败",Toast.LENGTH_SHORT).show();
+                        swipeRefresh.setRefreshing(false);//新增
                     }
                 });
             }
@@ -152,6 +170,7 @@ public class WeatherActivity extends AppCompatActivity {
                             Toast.makeText(WeatherActivity.this,
                                     "获取天气信息失败",Toast.LENGTH_SHORT).show();
                         }
+                        swipeRefresh.setRefreshing(false);//新增
                     }
                 });
             }
@@ -212,5 +231,7 @@ public class WeatherActivity extends AppCompatActivity {
         sportText = findViewById(R.id.sport_text);
 
         bingPicImg = findViewById(R.id.bing_pic_img);
+
+        swipeRefresh = findViewById(R.id.swipe_refresh);
     }
 }
