@@ -2,10 +2,13 @@ package com.lexieluv.coolweather.util;
 
 
 import android.text.TextUtils;
+import android.util.Log;
 
+import com.google.gson.Gson;
 import com.lexieluv.coolweather.db.City;
 import com.lexieluv.coolweather.db.County;
 import com.lexieluv.coolweather.db.Province;
+import com.lexieluv.coolweather.gson.Weather;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -13,6 +16,7 @@ import org.json.JSONObject;
 
 /**
  * 4.创建这个工具类来处理JSON格式的数据
+ * 7.还添加了一个处理weather的json格式的数据
  */
 
 public class Utility {
@@ -28,6 +32,7 @@ public class Utility {
                 //2）然后遍历这个数组，把每一个值交给jsonobject对象
                 for(int i = 0;i < allProvinces.length();i++){
                     JSONObject provinceObject = allProvinces.getJSONObject(i);
+                    Log.d("=====2=====",provinceObject.toString());
                     //3）并在这里创建实体类对象，并把json对象获取的值赋给这个实体类对象
                     Province province = new Province();
                     province.setProvinceName(provinceObject.getString("name"));
@@ -89,5 +94,20 @@ public class Utility {
             }
         }
         return false;
+    }
+
+    /*
+    将返回的JSON数据解析成Weather实体类
+     */
+    public static Weather handleWeatherResponse(String response){
+        try {
+            JSONObject jsonObject = new JSONObject(response);//注意这里先搞清楚数据是数组还是对象类型，再来传入内容进行处理
+            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather");
+            String weatherContent = jsonArray.getJSONObject(0).toString();
+            return new Gson().fromJson(weatherContent,Weather.class);//返回用gson解析过的对象给天气类
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

@@ -1,10 +1,13 @@
 package com.lexieluv.coolweather;
 
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,8 +36,10 @@ import okhttp3.Response;
 
 /**
  * 5.创建碎片，用于遍历省市县数据，《初始化工作》
+ * 9.从城市界面跳转到天气界面
  */
 public class ChooseAreaFragment extends Fragment {
+//    Context context;这里不可以用定义的方式显示上下文，因为没有地方可以初始化，所以直接用getContext
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
     public static final int LEVEL_COUNTY = 2;
@@ -77,6 +82,7 @@ public class ChooseAreaFragment extends Fragment {
         backButton = view.findViewById(R.id.back_button);
         listView = view.findViewById(R.id.list_view);
         adapter = new ArrayAdapter<>(getContext(),R.layout.support_simple_spinner_dropdown_item,dataList);
+        listView.setAdapter(adapter);//这句话前面忘了加上去，我绝了
         return view;
     }
 
@@ -92,9 +98,17 @@ public class ChooseAreaFragment extends Fragment {
                 } else if (currentLevel == LEVEL_CITY){
                     selectedCity = cityList.get(position);
                     queryCounties();
+                } else if (currentLevel == LEVEL_COUNTY){//新增加跳转到天气界面
+                    String weatherId = countyList.get(position).getWeatherId();
+                    Intent intent = new Intent(getActivity(),
+                            WeatherActivity.class);
+                    intent.putExtra("weather_id",weatherId);//这里进行intent接收
+                    startActivity(intent);
+                    getActivity().finish();
                 }
             }
         });
+
         //这里让back按钮才判断是否是县级，因为县级是最低一级，返回去的时候就可以判断是否是城市还是省份
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -102,11 +116,12 @@ public class ChooseAreaFragment extends Fragment {
                 if(currentLevel == LEVEL_COUNTY){
                     queryCities();
                 }else if (currentLevel == LEVEL_CITY){
-                    queryCounties();
+                    queryProvinces();//这里检查到写错了刚才
                 }
             }
         });
         queryProvinces();//什么都不是的时候，当然是呆在最大的省份处啦！
+
     }
     /*
     查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询
@@ -128,6 +143,7 @@ public class ChooseAreaFragment extends Fragment {
             String address = "http://guolin.tech/api/china";
             queryFromServer(address,"province");//要创建一个在网上找的方法，逻辑规律地处理问题！！
         }
+        Log.d("=====1=====",provinceList.toString());
     }
 
     /*
@@ -138,18 +154,27 @@ public class ChooseAreaFragment extends Fragment {
         backButton.setVisibility(View.VISIBLE);//这里因为可以返回，所以按钮可见
         cityList = DataSupport.where("provinceid = ?",
                 String.valueOf(selectedProvince.getId())).find(City.class);//这里不像上面找全部，而是按条件查找
+        Log.d("====3====",cityList.toString());
         if(cityList.size() > 0){
-            dataList.clear();
-            for(City city : cityList){
-                dataList.add(city.getCityName());
+            try {//新增了一个try catch来捕获异常
+                dataList.clear();
+                for(City city : cityList){
+                    dataList.add(city.getCityName());
+                }
+                adapter.notifyDataSetChanged();
+                listView.setSelection(0);
+                currentLevel = LEVEL_CITY;
+            } catch (NullPointerException e){
+                String address = "http://guolin.tech/api/china";
+                queryFromServer(address,"province");
+                int provinceCode = selectedProvince.getProvinceCode();
+                address = "http://guolin.tech/api/china" + provinceCode;
+                queryFromServer(address,"city");
             }
-            adapter.notifyDataSetChanged();
-            listView.setSelection(0);
-            currentLevel = LEVEL_CITY;
         } else {
             //这里要先把身份的代码获取
             int provinceCode = selectedProvince.getProvinceCode();
-            String address = "http://guolin.tech/api/china" + provinceCode;
+            String address = "http://guolin.tech/api/china/" + provinceCode;
             queryFromServer(address,"city");
         }
     }
@@ -173,8 +198,8 @@ public class ChooseAreaFragment extends Fragment {
         } else {
             int provinceCode = selectedProvince.getProvinceCode();
             int cityCode = selectedCity.getCityCode();
-            String address = "http://guolin.tech/api/china" + provinceCode + "/"
-                    + cityCode;
+            String address = "http://guolin.tech/api/china/" + provinceCode + "/"
+                    + cityCode;//还是好好debug吧，其实就少了斜杠，吐血ing。。。
             queryFromServer(address,"county");
         }
     }
@@ -186,10 +211,24 @@ public class ChooseAreaFragment extends Fragment {
         showProgressDialog();//还要创建一个对话框
         //下面这里用到了okhttp里面的方法，由于这个类已经被封装过，所以下面的操作会自然在子线程进行网络操作
         HttpUtil.sendOkHttpRequest(address, new Callback() {
+            //2）这个应该是响应失败的操作
+            @Override
+            public void onFailure(Call call, IOException e) {
+                //还是通过新开UI线程来回到主线程处理逻辑
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        closeProgressDialog();
+                        Toast.makeText(getContext(),"加载失败！",Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
             //1）这个应该是成功响应的操作
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 String respronseText  = response.body().string();
+                Log.d("====4====",respronseText);
                 boolean result = false;//result是一个布尔类型的值
                 if("province".equals(type)){
                     result = Utility.handleProvinResponse(respronseText);
@@ -214,18 +253,7 @@ public class ChooseAreaFragment extends Fragment {
                     });
                 }
             }
-            //2）这个应该是响应失败的操作
-            @Override
-            public void onFailure(Call call, IOException e) {
-                //还是通过新开UI线程来回到主线程处理逻辑
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        closeProgressDialog();
-                        Toast.makeText(getContext(),"加载失败！",Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
+
         });
     }
 
