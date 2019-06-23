@@ -4,11 +4,14 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.preference.PreferenceManager;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -31,6 +34,7 @@ import okhttp3.Response;
  * 8.请求天气数据，并且将数据展示到界面上
  * 11.使背景图片和标题更加融合
  * 12.加入刷新功能，更新天气的处理逻辑
+ * 13.加入滑动菜单的逻辑处理
  */
 public class WeatherActivity extends AppCompatActivity {
 
@@ -49,7 +53,10 @@ public class WeatherActivity extends AppCompatActivity {
 
     private ImageView bingPicImg;//从必应上获取图片
 
-    private SwipeRefreshLayout swipeRefresh;//新增刷新布局
+    public SwipeRefreshLayout swipeRefresh;//新增刷新布局
+
+    public DrawerLayout drawerLayout;//新增滑动菜单
+    private Button navButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +75,15 @@ public class WeatherActivity extends AppCompatActivity {
         //初始化
         initView();
 
+
+        //新增滑动菜单
+        navButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
+        
         //刷新功能加入
         swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
 
@@ -135,7 +151,7 @@ public class WeatherActivity extends AppCompatActivity {
     /*
     根据天气id来请求城市天气信息
      */
-    private void requestWeather(final String weatherId) {
+    public void requestWeather(final String weatherId) {
         String weatherUrl = "http://guolin.tech/api/weather?cityid=" +
                 weatherId + "&key=be95c4c46f5b4329b095cf91ed56660b";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
@@ -233,5 +249,8 @@ public class WeatherActivity extends AppCompatActivity {
         bingPicImg = findViewById(R.id.bing_pic_img);
 
         swipeRefresh = findViewById(R.id.swipe_refresh);
+
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navButton = findViewById(R.id.nav_button);
     }
 }
